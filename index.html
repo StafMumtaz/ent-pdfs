@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF Shelf</title>
+  <link rel="icon" href="data:," />
+  <!--
+    HOW TO USE (zero cost):
+    1) Create a folder named "pdfs" next to this file and drop your PDFs in it.
+    2) Edit the MANIFEST below to list each PDF with a title/subtitle (use relative paths like ./pdfs/file.pdf).
+    3) Host this single file + the /pdfs folder on GitHub Pages, Cloudflare Pages, or a Hugging Face Static Space.
+       - GitHub Pages: Settings → Pages → Deploy from a branch → root. Your site will be https://<you>.github.io/<repo>/
+       - Hugging Face: New Space → Static template → drag this file + /pdfs into the Space.
+    4) Share the site URL. Clicking any card opens the PDF in the user's browser viewer with a print button.
+
+    Notes:
+    - Thumbnails are rendered client-side using pdf.js (first page). No server needed.
+    - If a PDF is large or cross-origin blocked, the card shows a fallback icon.
+    - Everything here is static and free within the host's normal quotas.
+  -->
+  <style>
+    :root {
+      --bg: #0b0c0f;
+      --fg: #e7e7e7;
+      --muted: #b9b9c2;
+      --card: #121318;
+      --ring: #4c78ff44;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; padding: 20px;
+      background: var(--bg); color: var(--fg);
+      font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    .header { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .title { font-weight: 700; font-size: 20px; }
+    .hint { color: var(--muted); font-size: 14px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .card { position: relative; display: block; border-radius: 16px; background: var(--card); overflow: hidden; text-decoration: none; color: inherit; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .card:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+    .thumb { width: 100%; aspect-ratio: 3/4; display: block; background: #1a1d24; object-fit: cover; }
+    .fallback { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:3/4; font-size:46px; opacity:.6; }
+
+    .meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px;
+             background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.75)); }
+    .meta .t { font-weight: 650; font-size: 14px; line-height: 1.2; margin: 0 0 2px; }
+    .meta .s { font-size: 12px; color: var(--muted); margin: 0; }
+
+    .empty { text-align: center; padding: 15vh 6vw; color: var(--muted); }
+    .empty .big { font-weight: 700; font-size: 22px; margin-bottom: 6px; color: var(--fg); }
+
+    .toolbar { display:flex; align-items:center; gap:8px; }
+    .search { appearance:none; border:1px solid #2a2e39; background:#0f1218; color:var(--fg);
+              padding:10px 12px; border-radius:10px; width: min(360px, 60vw); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">PDF Shelf</div>
+    <div class="toolbar">
+      <input id="q" class="search" placeholder="Search titles…" />
+      <span class="hint">Click a card to open & print</span>
+    </div>
+  </div>
+
+  <div id="grid" class="grid" role="list"></div>
+  <div id="empty" class="empty" hidden>
+    <div class="big">No PDFs yet</div>
+    Add files to <code>/pdfs</code> and list them in <code>MANIFEST</code> below.
+  </div>
+
+  <!-- pdf.js (client-side rendering of page 1 for thumbnails) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha512-i4s8f4q0ou8d8XAc0r5+8f7o6x8L7Kx1HGRIY5g1l2C7kJ3Q9h2fXj4eL9QdM9rQ2n8N2Uo7r4U2b4Yc0Q0wXg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    // Configure pdf.js worker
+    if (window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // === EDIT THIS LIST ===
+    // file: relative URL to the PDF (place PDFs in ./pdfs)
+    const MANIFEST = [
+      // { title: "Sample Consent Form", subtitle: "ENT Clinic", file: "./pdfs/consent.pdf" },
+      // { title: "Swab SOP v2", subtitle: "Aug 2025", file: "./pdfs/sop_v2.pdf" },
+    ];
+
+    const grid = document.getElementById('grid');
+    const empty = document.getElementById('empty');
+    const q = document.getElementById('q');
+
+    const state = { items: MANIFEST, filtered: MANIFEST };
+
+    function renderList(list) {
+      grid.innerHTML = '';
+      if (!list || !list.length) {
+        empty.hidden = false; return;
+      } else empty.hidden = true;
+
+      for (const item of list) {
+        const a = document.createElement('a');
+        a.className = 'card';
+        a.href = item.file; // opens browser PDF viewer
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.setAttribute('role','listitem');
+        a.setAttribute('aria-label', `${item.title} — ${item.subtitle || 'PDF'}`);
+
+        const img = document.createElement('img');
+        img.className = 'thumb';
+        img.alt = `${item.title} thumbnail`;
+        a.appendChild(img);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.innerHTML = `<p class="t">${escapeHtml(item.title)}</p><p class="s">${escapeHtml(item.subtitle || '')}</p>`;
+        a.appendChild(meta);
+
+        grid.appendChild(a);
+
+        // Render thumbnail with pdf.js
+        renderThumb(item.file, img).catch(() => {
+          // fallback icon
+          const fallback = document.createElement('div');
+          fallback.className = 'fallback';
+          fallback.textContent = '📄';
+          a.replaceChild(fallback, img);
+        });
+      }
+    }
+
+    async function renderThumb(url, imgEl) {
+      if (!window['pdfjsLib']) throw new Error('pdfjs not loaded');
+      const loadingTask = pdfjsLib.getDocument(url);
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
+
+      // Compute scale so the thumbnail is ~600px wide for quality, then the <img> scales down responsively
+      const viewport0 = page.getViewport({ scale: 1 });
+      const targetWidth = 600;
+      const scale = targetWidth / viewport0.width;
+      const viewport = page.getViewport({ scale });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: false });
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      imgEl.src = canvas.toDataURL('image/png');
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    }
+
+    function applyFilter() {
+      const term = q.value.trim().toLowerCase();
+      if (!term) { state.filtered = state.items; renderList(state.filtered); return; }
+      state.filtered = state.items.filter(x =>
+        (x.title && x.title.toLowerCase().includes(term)) ||
+        (x.subtitle && x.subtitle.toLowerCase().includes(term))
+      );
+      renderList(state.filtered);
+    }
+
+    q.addEventListener('input', applyFilter);
+
+    // Kick off
+    renderList(state.items);
+  </script>
+</body>
+</html>
