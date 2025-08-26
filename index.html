@@ -20,6 +20,14 @@
     - Everything here is static and free within the host's normal quotas.
   -->
   <style>
+    .badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 24px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,.6));
+            }
     :root {
       --bg: #0b0c0f;
       --fg: #e7e7e7;
@@ -84,37 +92,44 @@
     // === EDIT THIS LIST ===
     // file: relative URL to the PDF (place PDFs in ./pdfs)
     const MANIFEST = [
-  {
+    {
     title: "Larynx",
     subtitle: "Collection form for larynx and two copies of consents",
     file: "./pdfs/zLarynx.pdf",
-  },
-  {
+    emoji: "🗣️",   // voice box vibe
+    },
+    {
     title: "Middle Ear",
     subtitle: "Collection form for middle ear and two copies of consents",
     file: "./pdfs/zMiddleEar.pdf",
-  },
-  {
+    emoji: "🦻",   // hearing aid = “middle ear” nod
+    },
+    {
     title: "Outer Ear",
     subtitle: "Collection form for outer ear and two copies of consents",
     file: "./pdfs/zOuterEar.pdf",
-  },
-  {
+    emoji: "👂",   // ear
+    },
+    {
     title: "Sinus",
     subtitle: "Collection form for sinus and two copies of consents",
     file: "./pdfs/zSinus.pdf",
-  },
-  {
+    emoji: "🤧",   // sneeze face
+    },
+    {
     title: "Tonsils",
     subtitle: "Collection form for tonsils and two copies of consents",
     file: "./pdfs/zTonsils.pdf",
-  },
-  {
+    emoji: "🍦",   // tongue peek
+    },
+    {
     title: "Consents",
     subtitle: "Just two copies of consents and authorizations",
     file: "./pdfs/consent-and-authorization.pdf",
-  },
-];
+    emoji: "📄",   // keep the page
+    },
+    ];
+
 
 
     const grid = document.getElementById('grid');
@@ -143,6 +158,12 @@
         img.alt = `${item.title} thumbnail`;
         a.appendChild(img);
 
+        const badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.textContent = item.emoji || '📄';
+        a.appendChild(badge);
+
+
         const meta = document.createElement('div');
         meta.className = 'meta';
         meta.innerHTML = `<p class="t">${escapeHtml(item.title)}</p><p class="s">${escapeHtml(item.subtitle || '')}</p>`;
@@ -155,7 +176,7 @@
           // fallback icon
           const fallback = document.createElement('div');
           fallback.className = 'fallback';
-          fallback.textContent = '📄';
+          fallback.textContent = item.emoji || '📄';
           a.replaceChild(fallback, img);
         });
       }
